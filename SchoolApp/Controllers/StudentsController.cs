@@ -1,4 +1,8 @@
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApp.Data;
@@ -15,11 +19,29 @@ namespace SchoolApp.Controllers
             _context = context;
         }
 
-        public async Task<IActionResult> Index()
+        // GET: Students
+        // Task 12: Search by name, student number, or email
+        public async Task<IActionResult> Index(string? searchString)
         {
-            return View(await _context.Student.ToListAsync());
+            var students = from s in _context.Student
+                           select s;
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                var text = searchString.ToLower();
+
+                students = students.Where(s =>
+                    s.Name!.ToLower().Contains(text) ||
+                    s.StudentNo!.ToLower().Contains(text) ||
+                    s.Email!.ToLower().Contains(text));
+            }
+
+            ViewData["searchString"] = searchString;
+
+            return View(await students.ToListAsync());
         }
 
+        // GET: Students/Details/5
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -38,32 +60,38 @@ namespace SchoolApp.Controllers
             return View(student);
         }
 
+        // GET: Students/Create
         public IActionResult Create()
         {
             return View();
         }
 
+        // POST: Students/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("StudentId,Name,Email,ConfirmEmail,Phone,Age,StudentNo,BirthDate")] Student student)
+        public async Task<IActionResult> Create(
+            [Bind("StudentId,Name,Email,ConfirmEmail,Phone,Age,StudentNo,BirthDate")]
+            Student student)
         {
-            // Is there already a student with this email?
             if (await _context.Student.AnyAsync(s => s.Email == student.Email))
             {
-                // Put an error on Email; the student is not saved
-                ModelState.AddModelError("Email", "This email is already registered.");
+                ModelState.AddModelError(
+                    "Email",
+                    "This email is already registered.");
             }
 
             if (ModelState.IsValid)
             {
                 _context.Add(student);
                 await _context.SaveChangesAsync();
+
                 return RedirectToAction(nameof(Index));
             }
 
             return View(student);
         }
 
+        // GET: Students/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -81,19 +109,26 @@ namespace SchoolApp.Controllers
             return View(student);
         }
 
+        // POST: Students/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("StudentId,Name,Email,ConfirmEmail,Phone,Age,StudentNo,BirthDate")] Student student)
+        public async Task<IActionResult> Edit(
+            int id,
+            [Bind("StudentId,Name,Email,ConfirmEmail,Phone,Age,StudentNo,BirthDate")]
+            Student student)
         {
             if (id != student.StudentId)
             {
                 return NotFound();
             }
 
-            // Same check, but skip the student being edited
-            if (await _context.Student.AnyAsync(s => s.Email == student.Email && s.StudentId != student.StudentId))
+            if (await _context.Student.AnyAsync(s =>
+                s.Email == student.Email &&
+                s.StudentId != student.StudentId))
             {
-                ModelState.AddModelError("Email", "This email is already registered.");
+                ModelState.AddModelError(
+                    "Email",
+                    "This email is already registered.");
             }
 
             if (ModelState.IsValid)
@@ -121,6 +156,7 @@ namespace SchoolApp.Controllers
             return View(student);
         }
 
+        // GET: Students/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -139,6 +175,7 @@ namespace SchoolApp.Controllers
             return View(student);
         }
 
+        // POST: Students/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
@@ -151,6 +188,7 @@ namespace SchoolApp.Controllers
             }
 
             await _context.SaveChangesAsync();
+
             return RedirectToAction(nameof(Index));
         }
 
